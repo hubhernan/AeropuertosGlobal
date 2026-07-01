@@ -1,0 +1,42 @@
+# ==============================================================
+# AEROPUERTOS GLOBAL - Archivos a ignorar en Git
+# ==============================================================
+
+# Entorno virtual (nunca se sube a Git, es muy pesado)
+venv/
+env/
+
+# Archivos de datos espaciales y excels (son pesados y no se versionan)
+Aeropuertos/
+Complementos/
+
+# Variables de entorno secretas (contraseñas, API keys)
+.env
+*.env
+aeropuertos_project/.env
+
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*.pyo
+*/__pycache__/
+
+# Base de datos SQLite (no usaremos, pero por si acaso)
+*.sqlite3
+db.sqlite3
+
+# Archivos estáticos recolectados (se generan en producción)
+staticfiles/
+static/
+
+# Archivos de medios subidos por usuarios
+media/
+
+# Configuraciones del editor
+.vscode/
+.idea/
+*.swp
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

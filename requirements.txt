@@ -1,0 +1,47 @@
+# ==============================================================
+# AEROPUERTOS GLOBAL - Dependencias del Proyecto
+# Instalar con: pip install -r requirements.txt
+# ==============================================================
+
+# --- NÚCLEO DEL FRAMEWORK ---
+# Django: El framework web principal. Maneja URLs, vistas, plantillas HTML,
+# el panel de administración y el ORM (sistema para interactuar con la BD).
+Django==5.1.4
+
+# --- BASE DE DATOS ---
+# psycopg2-binary: El "puente" entre Django/Python y PostgreSQL.
+# La versión "binary" incluye las librerías necesarias ya compiladas,
+# lo que simplifica la instalación.
+psycopg2-binary==2.9.10
+
+# --- GIS (Sistema de Información Geográfica) ---
+# GDAL: Librería fundamental para leer/escribir formatos GIS (shapefiles,
+# GeoJSON, etc.) y transformar proyecciones. Es la base de GeoDjango.
+# NOTA: La versión del paquete pip DEBE coincidir con la versión de GDAL del sistema.
+# En Ubuntu 24.04 con los repos de pgdg, la versión del sistema es 3.8.4
+GDAL==3.8.4
+
+# --- API REST ---
+# djangorestframework: el framework estándar para construir APIs en Django.
+# Provee serializers, viewsets, autenticación, paginación, etc.
+djangorestframework==3.15.2
+
+# djangorestframework-gis: extiende DRF con soporte GeoJSON nativo.
+# Serializa automáticamente PointField → {"type":"Point","coordinates":[lon,lat]}
+djangorestframework-gis==1.1
+
+# --- VARIABLES DE ENTORNO ---
+# python-dotenv: Permite leer variables secretas (contraseñas de BD, API keys)
+# desde un archivo ".env" en lugar de escribirlas directamente en el código.
+# Esto es una práctica de seguridad esencial.
+python-dotenv==1.0.1
+
+# --- SERVIDOR WEB (Para producción en Render) ---
+# gunicorn: Un servidor web de producción para aplicaciones Python/Django.
+# Django trae su propio servidor de desarrollo, pero NO es seguro para producción.
+gunicorn==23.0.0
+
+# --- ARCHIVOS ESTÁTICOS (Para producción en Render) ---
+# whitenoise: Permite que Django sirva archivos estáticos (CSS, JS, imágenes)
+# directamente sin necesitar un servidor como Nginx. Esencial para Render.
+whitenoise==6.8.2
