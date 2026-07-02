@@ -15,6 +15,7 @@ Estructura de este archivo:
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import dj_database_url
 
 # =============================================================
 # RUTAS BASE
@@ -39,6 +40,10 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'clave-insegura-solo-para-desarrollo')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # =============================================================
 # APLICACIONES INSTALADAS
@@ -127,6 +132,15 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
+
+# Si existe DATABASE_URL (ej. en Render), sobreescribir la configuración por defecto
+if os.getenv("DATABASE_URL"):
+    DATABASES['default'] = dj_database_url.config(
+        default=os.getenv("DATABASE_URL"),
+        conn_max_age=600,
+        conn_health_checks=True,
+        engine='django.contrib.gis.db.backends.postgis'
+    )
 
 # =============================================================
 # VALIDACIÓN DE CONTRASEÑAS

@@ -45,3 +45,6 @@ gunicorn==23.0.0
 # whitenoise: Permite que Django sirva archivos estáticos (CSS, JS, imágenes)
 # directamente sin necesitar un servidor como Nginx. Esencial para Render.
 whitenoise==6.8.2
+
+# Manejo de DATABASE_URL en Producción
+dj-database-url==2.1.0

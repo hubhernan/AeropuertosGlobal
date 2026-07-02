@@ -1,0 +1,23 @@
+databases:
+  - name: aeropuertos-db
+    databaseName: aeropuertos_db
+    user: aeropuertos_user
+    plan: free
+    # Usar PostGIS (Render provee Postgres, necesitas activar postgis luego)
+
+services:
+  - type: web
+    name: aeropuertos-web
+    env: docker
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aeropuertos-db
+          property: connectionString
+      - key: DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: MAPTILER_API_KEY
+        sync: false # El usuario debe ingresarla en el dashboard
