@@ -19,7 +19,7 @@ psycopg2-binary==2.9.10
 # GeoJSON, etc.) y transformar proyecciones. Es la base de GeoDjango.
 # NOTA: La versión del paquete pip DEBE coincidir con la versión de GDAL del sistema.
 # En Ubuntu 24.04 con los repos de pgdg, la versión del sistema es 3.8.4
-GDAL==3.8.4
+# GDAL==3.8.4  <-- Comentado para que no falle en Docker. GeoDjango usa los binarios de C.
 
 # --- API REST ---
 # djangorestframework: el framework estándar para construir APIs en Django.
