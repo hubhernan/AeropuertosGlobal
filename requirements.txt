@@ -48,3 +48,7 @@ whitenoise==6.8.2
 
 # Manejo de DATABASE_URL en Producción
 dj-database-url==2.1.0
+
+# Manipulacion de datos
+pandas
+openpyxl
