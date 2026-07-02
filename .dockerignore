@@ -12,8 +12,6 @@ db.sqlite3
 *.shp
 *.shx
 *.prj
-*.csv
-*.xlsx
 staticfiles/
 .git/
 .gitignore
