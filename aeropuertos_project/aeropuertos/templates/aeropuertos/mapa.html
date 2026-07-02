@@ -3,670 +3,1184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AeropuertosGlobal — Mapa Interactivo</title>
-    <meta name="description" content="Visualización interactiva de aeropuertos globales con rutas de vuelo y estadísticas aéreas.">
+    <title>AeropuertosGlobal — Mapa PNR Ene-Jun 2026</title>
+    <meta name="description" content="Análisis de vuelos y pasajeros PNR3 Enero–Junio 2026. Rutas aéreas, volumen por aeropuerto y estadísticas por aerolínea.">
 
-    <!-- MapLibre GL JS: la biblioteca de mapas que usaremos -->
-    <!-- CDN = se carga desde internet, no necesitamos instalarlo -->
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-
-    <!-- Google Fonts: tipografía moderna -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        /* ============================================================
-           VARIABLES DE DISEÑO (Design Tokens)
-           Centralizar colores y medidas facilita cambios futuros.
-        ============================================================ */
-        :root {
-            --color-bg:          #0a0e1a;
-            --color-panel:       rgba(13, 18, 35, 0.92);
-            --color-border:      rgba(255, 255, 255, 0.08);
-            --color-accent:      #3b82f6;
-            --color-accent-glow: rgba(59, 130, 246, 0.35);
-            --color-text:        #e2e8f0;
-            --color-text-muted:  #64748b;
-            --color-airport:     #38bdf8;
-            --color-airport-glow:rgba(56, 189, 248, 0.6);
-            --radius:            12px;
-            --transition:        0.25s ease;
-        }
+    /* ============================================================
+       DESIGN TOKENS
+    ============================================================ */
+    :root {
+        --bg:           #07090f;
+        --panel:        rgba(9, 13, 26, 0.94);
+        --panel-light:  rgba(16, 22, 42, 0.88);
+        --border:       rgba(255,255,255,0.07);
+        --border-h:     rgba(255,255,255,0.14);
+        --accent:       #3b82f6;
+        --accent-glow:  rgba(59,130,246,0.28);
+        --cyan:         #06b6d4;
+        --green:        #22c55e;
+        --amber:        #f59e0b;
+        --danger:       #ef4444;
+        --orange:       #f97316;
+        --text:         #e2e8f0;
+        --text-dim:     #94a3b8;
+        --text-muted:   #64748b;
+        --radius:       12px;
+        --radius-sm:    8px;
+        --tr:           0.2s ease;
+        --sidebar:      300px;
+        --header:       54px;
+        --detail:       340px;
+    }
 
-        /* ============================================================
-           RESET Y BASE
-        ============================================================ */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--color-bg);
-            color: var(--color-text);
-            height: 100vh;
-            overflow: hidden;
-        }
+    body {
+        font-family: 'Inter', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        height: 100vh;
+        overflow: hidden;
+    }
 
-        /* ============================================================
-           LAYOUT PRINCIPAL
-        ============================================================ */
-        #app {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            grid-template-rows: 60px 1fr;
-            height: 100vh;
-        }
+    /* ============================================================
+       LAYOUT
+    ============================================================ */
+    #app {
+        display: grid;
+        grid-template-columns: var(--sidebar) 1fr;
+        grid-template-rows: var(--header) 1fr;
+        height: 100vh;
+    }
 
-        /* ============================================================
-           BARRA SUPERIOR (HEADER)
-        ============================================================ */
-        #header {
-            grid-column: 1 / -1;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-            background: var(--color-panel);
-            border-bottom: 1px solid var(--color-border);
-            backdrop-filter: blur(20px);
-            z-index: 10;
-        }
+    /* ============================================================
+       HEADER
+    ============================================================ */
+    #header {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 18px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(24px);
+        z-index: 20;
+    }
 
-        .header-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 700;
-            font-size: 1.1rem;
-            letter-spacing: -0.02em;
-        }
+    .brand {
+        display: flex; align-items: center; gap: 9px;
+        font-size: 0.95rem; font-weight: 700; letter-spacing: -0.02em;
+        flex-shrink: 0;
+    }
+    .brand-icon {
+        width: 28px; height: 28px;
+        background: linear-gradient(135deg, var(--accent), var(--cyan));
+        border-radius: 7px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px;
+    }
+    .hdiv { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
-        .header-brand .icon {
-            width: 32px; height: 32px;
-            background: linear-gradient(135deg, var(--color-accent), #06b6d4);
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 16px;
-        }
+    .stats-row { display: flex; gap: 6px; flex: 1; overflow: hidden; }
+    .stat-pill {
+        background: rgba(255,255,255,0.035);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .stat-pill strong { color: var(--accent); font-size: 0.82rem; font-weight: 700; }
+    .stat-pill.live   { color: var(--green); border-color: rgba(34,197,94,0.25); }
 
-        .header-stats {
-            display: flex;
-            gap: 24px;
-            font-size: 0.8rem;
-            color: var(--color-text-muted);
-        }
+    /* Month filter buttons */
+    .mes-filtros { display: flex; gap: 3px; flex-shrink: 0; }
+    .mes-btn {
+        padding: 3px 9px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.68rem;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all var(--tr);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .mes-btn:hover  { border-color: var(--accent); color: var(--accent); }
+    .mes-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 12px var(--accent-glow); }
+    .mes-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .header-stats span strong {
-            color: var(--color-accent);
-            font-size: 1rem;
-        }
+    /* ============================================================
+       SIDEBAR
+    ============================================================ */
+    #sidebar {
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        backdrop-filter: blur(24px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 10;
+    }
 
-        /* ============================================================
-           PANEL LATERAL IZQUIERDO
-        ============================================================ */
-        #sidebar {
-            background: var(--color-panel);
-            border-right: 1px solid var(--color-border);
-            backdrop-filter: blur(20px);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+    .s-sec { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .s-title {
+        font-size: 0.62rem; font-weight: 600;
+        color: var(--text-muted); text-transform: uppercase;
+        letter-spacing: 0.12em; margin-bottom: 9px;
+    }
 
-        .sidebar-section {
-            padding: 20px;
-            border-bottom: 1px solid var(--color-border);
-        }
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .stat-card {
+        background: rgba(255,255,255,0.025);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 9px 11px;
+        transition: border-color var(--tr);
+    }
+    .stat-card:hover { border-color: var(--border-h); }
+    .stat-val { font-size: 1.1rem; font-weight: 700; color: var(--accent); line-height: 1; }
+    .stat-val.g { color: var(--green); }
+    .stat-val.a { color: var(--amber); }
+    .stat-val.c { color: var(--cyan); }
+    .stat-lbl   { font-size: 0.62rem; color: var(--text-muted); margin-top: 3px; }
 
-        .sidebar-section h3 {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--color-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 14px;
-        }
+    /* Layer toggles */
+    .toggle-row {
+        display: flex; align-items: center;
+        justify-content: space-between;
+        padding: 5px 0;
+    }
+    .toggle-label { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; color: var(--text-dim); cursor: default; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .toggle-sw { position: relative; width: 34px; height: 19px; }
+    .toggle-sw input { display: none; }
+    .toggle-sl {
+        position: absolute; inset: 0;
+        background: rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;
+        transition: background var(--tr);
+    }
+    .toggle-sl::before {
+        content: ''; position: absolute;
+        width: 13px; height: 13px; border-radius: 50%;
+        background: #fff; top: 3px; left: 3px;
+        transition: transform var(--tr);
+    }
+    .toggle-sw input:checked + .toggle-sl { background: var(--accent); }
+    .toggle-sw input:checked + .toggle-sl::before { transform: translateX(15px); }
 
-        /* Buscador */
-        .search-box {
-            position: relative;
-        }
+    /* Search */
+    .search-wrap { position: relative; }
+    .search-icon {
+        position: absolute; left: 10px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted); font-size: 13px; pointer-events: none;
+    }
+    #search-input {
+        width: 100%; padding: 8px 12px 8px 32px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text); font-size: 0.8rem; font-family: inherit;
+        outline: none;
+        transition: border-color var(--tr), box-shadow var(--tr);
+    }
+    #search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    #search-input::placeholder { color: var(--text-muted); }
 
-        #search-input {
-            width: 100%;
-            padding: 10px 14px 10px 38px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            color: var(--color-text);
-            font-size: 0.85rem;
-            font-family: inherit;
-            outline: none;
-            transition: border-color var(--transition), box-shadow var(--transition);
-        }
+    /* Airport list */
+    #ap-list {
+        flex: 1; overflow-y: auto; padding: 5px 7px;
+        scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .ap-item {
+        display: flex; align-items: center; gap: 9px;
+        padding: 7px 9px; border-radius: var(--radius-sm);
+        cursor: pointer; border: 1px solid transparent;
+        transition: all var(--tr);
+    }
+    .ap-item:hover  { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.2); }
+    .ap-item.active { background: rgba(59,130,246,0.14); border-color: var(--accent); }
+    .ap-iata { font-size: 0.8rem; font-weight: 700; color: var(--cyan); font-family: monospace; min-width: 30px; }
+    .ap-info { flex: 1; min-width: 0; }
+    .ap-name { font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ap-sub  { font-size: 0.65rem; color: var(--text-muted); }
+    .ap-badge { font-size: 0.62rem; color: var(--text-muted); text-align: right; flex-shrink: 0; }
+    .ap-badge span { display: block; font-size: 0.72rem; font-weight: 700; color: var(--accent); }
 
-        #search-input:focus {
-            border-color: var(--color-accent);
-            box-shadow: 0 0 0 3px var(--color-accent-glow);
-        }
+    /* ============================================================
+       MAP
+    ============================================================ */
+    #map-wrap { position: relative; overflow: hidden; }
+    #map { width: 100%; height: 100%; }
 
-        #search-input::placeholder { color: var(--color-text-muted); }
+    /* Loading overlay */
+    #loading {
+        position: absolute; inset: 0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: rgba(7,9,15,0.82);
+        backdrop-filter: blur(8px);
+        z-index: 50; gap: 12px;
+    }
+    #loading.hidden { display: none; }
+    .spinner {
+        width: 38px; height: 38px;
+        border: 3px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-txt { font-size: 0.82rem; color: var(--text-muted); }
 
-        .search-icon {
-            position: absolute;
-            left: 12px; top: 50%;
-            transform: translateY(-50%);
-            color: var(--color-text-muted);
-            font-size: 14px;
-            pointer-events: none;
-        }
+    /* ============================================================
+       POPUP
+    ============================================================ */
+    .maplibregl-popup-content {
+        background: rgba(9,13,26,0.96) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        padding: 14px !important;
+        color: var(--text) !important;
+        backdrop-filter: blur(20px) !important;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important;
+        min-width: 195px;
+    }
+    .maplibregl-popup-tip { border-top-color: rgba(9,13,26,0.96) !important; }
+    .pop-iata  { font-size: 1.35rem; font-weight: 800; color: var(--cyan); font-family: monospace; letter-spacing: 0.06em; }
+    .pop-name  { font-size: 0.78rem; color: var(--text-dim); margin: 3px 0 8px; }
+    .pop-row   { display: flex; justify-content: space-between; font-size: 0.73rem; padding: 3px 0; border-top: 1px solid var(--border); color: var(--text-muted); }
+    .pop-row b { color: var(--text); }
+    .pop-btn {
+        display: block; width: 100%; margin-top: 9px;
+        padding: 6px 0; background: var(--accent); color: #fff;
+        border: none; border-radius: 6px; font-size: 0.73rem;
+        font-weight: 600; font-family: inherit; cursor: pointer;
+        transition: background var(--tr); text-align: center;
+    }
+    .pop-btn:hover { background: #2563eb; }
 
-        /* Lista de aeropuertos */
-        #airport-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px;
-            scrollbar-width: thin;
-            scrollbar-color: var(--color-border) transparent;
-        }
+    /* MapLibre controls */
+    .maplibregl-ctrl-group { background: rgba(9,13,26,0.9) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; }
+    .maplibregl-ctrl-group button { color: var(--text) !important; }
 
-        .airport-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background var(--transition);
-            border: 1px solid transparent;
-        }
+    /* ============================================================
+       DETAIL PANEL
+    ============================================================ */
+    #detail-panel {
+        position: absolute; top: 0; right: 0;
+        width: var(--detail); height: 100%;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        backdrop-filter: blur(24px);
+        display: flex; flex-direction: column;
+        transform: translateX(100%);
+        transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+        z-index: 30; overflow: hidden;
+    }
+    #detail-panel.open { transform: translateX(0); }
 
-        .airport-item:hover {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: rgba(59, 130, 246, 0.2);
-        }
+    .dp-head {
+        padding: 14px 14px 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: flex-start; justify-content: space-between;
+        flex-shrink: 0;
+    }
+    .dp-iata   { font-size: 1.75rem; font-weight: 800; color: var(--cyan); font-family: monospace; letter-spacing: 0.06em; line-height: 1; }
+    .dp-nombre { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+    .dp-close {
+        background: rgba(255,255,255,0.055); border: 1px solid var(--border);
+        border-radius: 6px; color: var(--text-muted);
+        width: 26px; height: 26px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; transition: all var(--tr);
+    }
+    .dp-close:hover { background: rgba(255,255,255,0.12); color: var(--text); }
 
-        .airport-item.active {
-            background: rgba(59, 130, 246, 0.15);
-            border-color: var(--color-accent);
-        }
+    .dp-body {
+        flex: 1; overflow-y: auto; padding: 12px;
+        scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+        display: flex; flex-direction: column; gap: 12px;
+    }
 
-        .airport-iata {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--color-airport);
-            min-width: 36px;
-            font-family: 'Courier New', monospace;
-        }
+    /* Detail stat cards */
+    .dp-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .dp-stat {
+        background: rgba(255,255,255,0.025);
+        border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px;
+    }
+    .dp-val { font-size: 1rem; font-weight: 700; color: var(--accent); }
+    .dp-lbl { font-size: 0.6rem; color: var(--text-muted); margin-top: 2px; }
 
-        .airport-info { flex: 1; min-width: 0; }
+    .dp-sec { font-size: 0.6rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; }
 
-        .airport-name {
-            font-size: 0.82rem;
-            font-weight: 500;
-            color: var(--color-text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+    /* Mini bars */
+    .mini-bars { display: flex; flex-direction: column; gap: 4px; }
+    .mini-bar-row { display: flex; align-items: center; gap: 5px; font-size: 0.7rem; }
+    .mini-lbl { color: var(--cyan); font-family: monospace; font-weight: 700; min-width: 28px; font-size: 0.68rem; }
+    .mini-track { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+    .mini-fill  { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--cyan)); transition: width 0.5s ease; }
+    .mini-val   { color: var(--text-muted); font-size: 0.65rem; min-width: 46px; text-align: right; }
 
-        .airport-location {
-            font-size: 0.72rem;
-            color: var(--color-text-muted);
-            margin-top: 2px;
-        }
+    /* Monthly chart */
+    .month-chart { display: flex; align-items: flex-end; gap: 4px; height: 56px; }
+    .month-col   { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; }
+    .month-fill-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+    .month-fill {
+        width: 100%; border-radius: 3px 3px 0 0;
+        background: linear-gradient(180deg, var(--cyan), var(--accent));
+        transition: height 0.5s ease; min-height: 2px;
+    }
+    .month-lbl { font-size: 0.56rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
 
-        /* ============================================================
-           MAPA
-        ============================================================ */
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+    /* Hour distribution */
+    .hour-chart {
+        display: flex; align-items: flex-end; gap: 1.5px; height: 36px;
+    }
+    .hour-bar {
+        flex: 1; border-radius: 2px 2px 0 0;
+        background: linear-gradient(180deg, var(--cyan), var(--accent));
+        min-height: 0; transition: height 0.4s ease;
+    }
+    .hour-labels {
+        display: flex; justify-content: space-between;
+        font-size: 0.54rem; color: var(--text-muted); margin-top: 3px;
+    }
 
-        /* ============================================================
-           POPUP DEL MAPA
-        ============================================================ */
-        .maplibregl-popup-content {
-            background: var(--color-panel) !important;
-            border: 1px solid var(--color-border) !important;
-            border-radius: var(--radius) !important;
-            padding: 16px !important;
-            color: var(--color-text) !important;
-            backdrop-filter: blur(20px) !important;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important;
-            min-width: 220px;
-        }
+    /* Loading state in detail panel */
+    .dp-loading {
+        display: flex; align-items: center; justify-content: center;
+        padding: 30px; color: var(--text-muted); font-size: 0.8rem; gap: 9px;
+    }
 
-        .maplibregl-popup-tip {
-            border-top-color: var(--color-panel) !important;
-        }
-
-        .popup-iata {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--color-airport);
-            letter-spacing: 0.05em;
-            font-family: 'Courier New', monospace;
-        }
-
-        .popup-name {
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin: 4px 0 10px;
-            line-height: 1.4;
-        }
-
-        .popup-detail {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.78rem;
-            color: var(--color-text-muted);
-            margin-top: 4px;
-        }
-
-        .popup-detail span { color: var(--color-text); }
-
-        /* ============================================================
-           CONTROL DE ZOOM PERSONALIZADO
-        ============================================================ */
-        .maplibregl-ctrl-group {
-            background: var(--color-panel) !important;
-            border: 1px solid var(--color-border) !important;
-            border-radius: 8px !important;
-        }
-
-        .maplibregl-ctrl-group button {
-            color: var(--color-text) !important;
-        }
-
-        /* ============================================================
-           INDICADOR DE CARGA
-        ============================================================ */
-        #loading {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--color-panel);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius);
-            padding: 24px 32px;
-            text-align: center;
-            z-index: 100;
-            backdrop-filter: blur(20px);
-        }
-
-        .spinner {
-            width: 36px; height: 36px;
-            border: 3px solid var(--color-border);
-            border-top-color: var(--color-accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 12px;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ============================================================
-           BADGE DE CONTEO
-        ============================================================ */
-        .count-badge {
-            background: var(--color-accent);
-            color: white;
-            font-size: 0.65rem;
-            font-weight: 700;
-            padding: 2px 7px;
-            border-radius: 20px;
-            margin-left: auto;
-        }
+    /* ============================================================
+       LEGEND
+    ============================================================ */
+    #legend {
+        position: absolute; bottom: 36px; left: 12px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
+        font-size: 0.68rem;
+        backdrop-filter: blur(16px);
+        z-index: 5;
+    }
+    .legend-title { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-size: 0.6rem; }
+    .legend-row { display: flex; align-items: center; gap: 7px; margin-top: 4px; color: var(--text-dim); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-line { width: 22px; height: 2px; border-radius: 1px; flex-shrink: 0; }
     </style>
 </head>
 
 <body>
 <div id="app">
 
-    <!-- ===== HEADER ===== -->
+    <!-- ═══════════ HEADER ═══════════ -->
     <header id="header">
-        <div class="header-brand">
-            <div class="icon">✈</div>
+        <div class="brand">
+            <div class="brand-icon">✈</div>
             <span>AeropuertosGlobal</span>
         </div>
-        <div class="header-stats">
-            <div>
-                Aeropuertos: <strong id="total-count">...</strong>
-            </div>
-            <div>
-                Seleccionado: <strong id="selected-iata">—</strong>
-            </div>
-            <div style="color: #22c55e; font-size: 0.75rem;">
-                ● API activa
+        <div class="hdiv"></div>
+
+        <div class="stats-row">
+            <div class="stat-pill">Vuelos: <strong id="h-vuelos">—</strong></div>
+            <div class="stat-pill">Pasajeros: <strong id="h-pax">—</strong></div>
+            <div class="stat-pill">Aerolíneas: <strong id="h-aerolineas">—</strong></div>
+            <div class="stat-pill">Rutas OD: <strong id="h-rutas">—</strong></div>
+            <div class="stat-pill live">● API activa</div>
+        </div>
+
+        <div class="mes-filtros" role="group" aria-label="Filtro por mes">
+            <button class="mes-btn active" data-mes="">TODOS</button>
+            <button class="mes-btn" data-mes="1">ENE</button>
+            <button class="mes-btn" data-mes="2">FEB</button>
+            <button class="mes-btn" data-mes="3">MAR</button>
+            <button class="mes-btn" data-mes="4">ABR</button>
+            <button class="mes-btn" data-mes="5">MAY</button>
+            <button class="mes-btn" data-mes="6">JUN</button>
+        <button class="mes-btn" style="margin-left: 10px; background: var(--accent); color: white;" onclick="window.location.href='/dashboard/'">📊 VER DASHBOARD</button>
+    </div>
+</header>
+
+    <!-- ═══════════ SIDEBAR ═══════════ -->
+    <aside id="sidebar">
+
+        <!-- Stats globales -->
+        <div class="s-sec">
+            <div class="s-title">📊 PNR3 · Ene–Jun 2026</div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-val" id="s-vuelos">—</div><div class="stat-lbl">Vuelos totales</div></div>
+                <div class="stat-card"><div class="stat-val g" id="s-pax">—</div><div class="stat-lbl">Pasajeros totales</div></div>
+                <div class="stat-card"><div class="stat-val a" id="s-aerolineas">—</div><div class="stat-lbl">Aerolíneas</div></div>
+                <div class="stat-card"><div class="stat-val c" id="s-aeropuertos">—</div><div class="stat-lbl">Aeropuertos</div></div>
             </div>
         </div>
-    </header>
 
-    <!-- ===== SIDEBAR ===== -->
-    <aside id="sidebar">
+        <!-- Filtros visuales de rutas -->
+        <div class="s-sec">
+            <div class="s-title">🎛️ Filtros de rutas</div>
+            
+            <div style="margin-bottom: 10px;">
+                <label style="font-size: 0.72rem; color: var(--text-dim); display: block; margin-bottom: 4px;">Máximo de rutas a dibujar:</label>
+                <select id="sel-max-rutas" style="width: 100%; padding: 4px; background: rgba(255,255,255,0.04); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem;">
+                    <option value="50">Top 50 (muy limpio)</option>
+                    <option value="200" selected>Top 200 (balanceado)</option>
+                    <option value="500">Top 500 (denso)</option>
+                    <option value="1500">Top 1500 (muy denso)</option>
+                    <option value="5000">Todas (riesgo de lentitud)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label style="font-size: 0.72rem; color: var(--text-dim); display: block; margin-bottom: 4px;">Filtro: mínimo de vuelos por ruta</label>
+                <select id="sel-min-vuelos" style="width: 100%; padding: 4px; background: rgba(255,255,255,0.04); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem;">
+                    <option value="1">1 o más (mostrar todas)</option>
+                    <option value="10">10 o más</option>
+                    <option value="25" selected>25 o más</option>
+                    <option value="100">100 o más</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Capas del mapa -->
+        <div class="s-sec">
+            <div class="s-title">🗂 Capas del mapa</div>
+            <div class="toggle-row">
+                <label class="toggle-label" for="t-rutas">
+                    <div class="dot" style="background:linear-gradient(90deg,var(--accent),var(--cyan))"></div>
+                    Rutas de vuelo
+                </label>
+                <label class="toggle-sw"><input type="checkbox" id="t-rutas" checked><span class="toggle-sl"></span></label>
+            </div>
+            <div class="toggle-row">
+                <label class="toggle-label" for="t-volumen">
+                    <div class="dot" style="background:var(--orange)"></div>
+                    Volumen pasajeros
+                </label>
+                <label class="toggle-sw"><input type="checkbox" id="t-volumen" checked><span class="toggle-sl"></span></label>
+            </div>
+            <div class="toggle-row">
+                <label class="toggle-label" for="t-catalogo">
+                    <div class="dot" style="background:#38bdf8"></div>
+                    Catálogo aeropuertos
+                </label>
+                <label class="toggle-sw"><input type="checkbox" id="t-catalogo" checked><span class="toggle-sl"></span></label>
+            </div>
+
         <!-- Buscador -->
-        <div class="sidebar-section">
-            <h3>🔍 Buscar aeropuerto</h3>
-            <div class="search-box">
+        <div class="s-sec">
+            <div class="s-title">🔍 Buscar aeropuerto</div>
+            <div class="search-wrap">
                 <span class="search-icon">⌕</span>
-                <input
-                    type="text"
-                    id="search-input"
-                    placeholder="Ciudad, IATA o nombre..."
-                    autocomplete="off"
-                >
+                <input type="text" id="search-input" placeholder="IATA, ciudad o país…" autocomplete="off">
             </div>
         </div>
 
         <!-- Lista de aeropuertos -->
-        <div id="airport-list" role="list" aria-label="Lista de aeropuertos">
-            <!-- Se llena con JavaScript -->
-        </div>
+        <div id="ap-list" role="list" aria-label="Aeropuertos por volumen de pasajeros"></div>
+
     </aside>
 
-    <!-- ===== MAPA ===== -->
-    <main style="position:relative;">
+    <!-- ═══════════ MAPA ═══════════ -->
+    <div id="map-wrap">
+
+        <!-- Loading overlay -->
         <div id="loading">
             <div class="spinner"></div>
-            <div style="font-size:0.85rem; color: var(--color-text-muted);">Cargando mapa...</div>
+            <div class="loading-txt" id="loading-txt">Iniciando mapa…</div>
         </div>
-        <div id="map"></div>
-    </main>
 
-</div>
+        <div id="map"></div>
+
+        <!-- Leyenda -->
+        <div id="legend">
+            <div class="legend-title">Volumen pasajeros</div>
+            <div class="legend-row"><div class="legend-dot" style="background:var(--green)"></div> Bajo (&lt; 200K)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:var(--amber)"></div> Medio (200K–1M)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:var(--orange)"></div> Alto (1M–5M)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:var(--danger)"></div> Muy alto (&gt; 5M)</div>
+            <div class="legend-title" style="margin-top:8px">Rutas</div>
+            <div class="legend-row"><div class="legend-line" style="background:linear-gradient(90deg,var(--accent),var(--cyan))"></div> Frecuencia de vuelo</div>
+        </div>
+
+        <!-- Panel de detalle (desliza desde derecha) -->
+        <div id="detail-panel" role="complementary" aria-label="Análisis de aeropuerto">
+            <div class="dp-head">
+                <div>
+                    <div class="dp-iata" id="dp-iata">—</div>
+                    <div class="dp-nombre" id="dp-nombre">Selecciona un aeropuerto</div>
+                </div>
+                <button class="dp-close" id="btn-close" aria-label="Cerrar panel">✕</button>
+            </div>
+            <div class="dp-body" id="dp-body">
+                <div class="dp-loading"><div class="spinner" style="width:22px;height:22px;border-width:2px"></div>Cargando…</div>
+            </div>
+        </div>
+
+    </div><!-- /map-wrap -->
+</div><!-- /app -->
 
 <script>
 // ================================================================
-// CONFIGURACIÓN
+// CONFIGURACIÓN Y ESTADO
 // ================================================================
-const MAPTILER_KEY = "{{ maptiler_key }}";
-// URL de nuestra API REST - ahora los datos vienen del servidor dinámicamente
-const API_GEOJSON_URL = "/api/aeropuertos/geojson/";
+const MAPTILER_KEY    = "{{ maptiler_key }}";
 
-// Variable global donde guardaremos los datos cargados de la API
-let todosLosAeropuertos = [];
+const S = {
+    mes:       null,    // null = todos los meses
+    capas:     { rutas: true, volumen: true, catalogo: true },
+    iataActivo: null,
+    maxRutas:   200,    // Valor inicial
+    minVuelos:  25,     // Valor inicial
+
+    catalogo:   {},     // IATA → { lon, lat, nombre, ciudad, pais }
+    pnrAp:      [],     // /api/pnr/por-aeropuerto/
+    pnrRutas:   [],     // /api/pnr/rutas/
+    resumen:    null,   // /api/pnr/resumen/
+};
 
 // ================================================================
-// INICIALIZACIÓN DEL MAPA
+// UTILIDADES
+// ================================================================
+const fmt  = n => (n ?? 0).toLocaleString('es-MX');
+const fmtM = n => n >= 1e6 ? `${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `${(n/1e3).toFixed(0)}K` : String(n||0);
+
+function qs(extra = {}) {
+    const p = {};
+    if (S.mes) p.mes = S.mes;
+    Object.assign(p, extra);
+    const s = new URLSearchParams(p).toString();
+    return s ? `?${s}` : '';
+}
+
+/**
+ * Construye un arco suave entre dos puntos geográficos.
+ *
+ * Corrección antimeridiano: normaliza la diferencia de longitud al rango
+ * [-180, +180] para que las rutas transpacíficas (p.ej. México → Japón/Corea)
+ * crucen el Océano Pacífico en lugar de dar la vuelta por Europa y Asia.
+ *
+ * MapLibre GL soporta coordenadas fuera del rango ±180° (wrapping), por lo que
+ * valores como lon = -221 (= 139°E – 360°) se dibujan correctamente cruzando
+ * el antimeridiano hacia el oeste.
+ */
+function arc(p0, p1, n = 40) {
+    let lon0 = p0[0], lat0 = p0[1];
+    let lon1 = p1[0], lat1 = p1[1];
+
+    // Diferencia bruta de longitud
+    let dLon = lon1 - lon0;
+
+    // Normalizar: si la diferencia supera ±180° tomamos el camino opuesto
+    if (dLon >  180) lon1 -= 360;   // camino más corto hacia el oeste (Pacífico)
+    if (dLon < -180) lon1 += 360;   // camino más corto hacia el este
+
+    const dx   = lon1 - lon0;
+    const dy   = lat1 - lat0;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const h    = Math.min(dist * 0.16, 5);   // altura del arco proporcional a la distancia
+
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        pts.push([lon0 + dx*t, lat0 + dy*t + Math.sin(Math.PI*t)*h]);
+    }
+    return pts;
+}
+
+// ================================================================
+// MAPA
 // ================================================================
 const map = new maplibregl.Map({
     container: 'map',
     style: `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_KEY}`,
-    center: [-95, 25],
-    zoom: 3.5,
-    minZoom: 1,
-    maxZoom: 18,
+    center: [-97, 24],
+    zoom: 3.2,
+    minZoom: 1, maxZoom: 18,
     antialias: true,
 });
-
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
 
 // ================================================================
-// CARGA DE DATOS DESDE LA API (fetch)
+// API
 // ================================================================
-// fetch() es la forma moderna de hacer peticiones HTTP desde JavaScript.
-// Es asíncrono: no bloquea el navegador mientras espera la respuesta.
-async function cargarAeropuertos() {
-    try {
-        document.getElementById('loading').style.display = 'flex';
+const api = {
+    resumen:  () => fetch(`/api/pnr/resumen/${qs()}`).then(r => r.json()),
+    porAp:    () => fetch(`/api/pnr/por-aeropuerto/${qs()}`).then(r => r.json()),
+    rutas:    () => fetch(`/api/pnr/rutas/${qs({ top: S.maxRutas, min_vuelos: S.minVuelos })}`).then(r => r.json()),
+    catalogo: () => fetch('/api/aeropuertos/geojson/').then(r => r.json()),
+    detalle:  iata => fetch(`/api/pnr/${iata}/detalle/${qs()}`).then(r => r.ok ? r.json() : null),
+};
 
-        // Petición GET a nuestra API REST
-        const respuesta = await fetch(API_GEOJSON_URL);
+// ================================================================
+// GEOJSON BUILDERS
+// ================================================================
 
-        if (!respuesta.ok) {
-            throw new Error(`Error HTTP: ${respuesta.status}`);
-        }
+function buildRutasGJ(rutas, cat) {
+    const maxV = Math.max(...rutas.map(r => r.vuelos), 1);
+    const features = [];
+    for (const r of rutas) {
+        const o = cat[r.origen], d = cat[r.destino];
+        if (!o || !d) continue;
+        features.push({
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: arc([o.lon, o.lat], [d.lon, d.lat]) },
+            properties: { origen: r.origen, destino: r.destino, vuelos: r.vuelos,
+                          pasajeros: r.pasajeros, pax_prom: r.pax_prom,
+                          intensidad: r.vuelos / maxV },
+        });
+    }
+    return { type: 'FeatureCollection', features };
+}
 
-        // Convertir la respuesta a objeto JavaScript
-        const geojson = await respuesta.json();
-        todosLosAeropuertos = geojson.features;
+function buildVolumenGJ(porAp, cat) {
+    const features = [];
+    for (const d of porAp) {
+        const ap = cat[d.iata];
+        if (!ap) continue;
+        features.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [ap.lon, ap.lat] },
+            properties: { iata: d.iata, nombre: ap.nombre, ciudad: ap.ciudad, pais: ap.pais,
+                          vuelos_total: d.vuelos_total, pax_total: d.pax_total,
+                          vuelos_salida: d.vuelos_salida, vuelos_llegada: d.vuelos_llegada },
+        });
+    }
+    return { type: 'FeatureCollection', features };
+}
 
-        // Actualizar el contador en el header
-        document.getElementById('total-count').textContent = todosLosAeropuertos.length;
+// ================================================================
+// CAPAS DEL MAPA
+// ================================================================
 
-        // Alimentar el mapa con los datos de la API
-        map.getSource('aeropuertos').setData(geojson);
+function srcSet(id, gj) {
+    if (map.getSource(id)) map.getSource(id).setData(gj);
+    else map.addSource(id, { type: 'geojson', data: gj });
+}
 
-        // Poblar la lista lateral
-        poblarLista(todosLosAeropuertos);
+function renderCapas() {
+    // ─── Rutas ───
+    srcSet('pnr-rutas', buildRutasGJ(S.pnrRutas, S.catalogo));
 
-        document.getElementById('loading').style.display = 'none';
+    if (!map.getLayer('ruta-halo')) {
+        // Halo de brillo bajo las líneas
+        map.addLayer({
+            id: 'ruta-halo', type: 'line', source: 'pnr-rutas',
+            paint: {
+                'line-color': '#3b82f6',
+                'line-width': ['interpolate',['linear'],['get','intensidad'], 0,3, 1,12],
+                'line-opacity': ['interpolate',['linear'],['get','intensidad'], 0,0.04, 1,0.14],
+                'line-blur': 5,
+            }
+        }, 'clusters');
 
-    } catch (error) {
-        console.error('Error cargando aeropuertos:', error);
-        document.getElementById('loading').innerHTML = `
-            <div style="color:#f87171; text-align:center">
-                <div style="font-size:2rem">⚠️</div>
-                <div>Error al cargar datos</div>
-                <div style="font-size:0.75rem; margin-top:8px">${error.message}</div>
-                <button onclick="cargarAeropuertos()" style="margin-top:12px; padding:6px 16px;
-                    background:var(--color-accent); color:white; border:none;
-                    border-radius:6px; cursor:pointer;">Reintentar</button>
-            </div>
-        `;
+        // Línea principal con gradiente de intensidad
+        map.addLayer({
+            id: 'ruta-line', type: 'line', source: 'pnr-rutas',
+            paint: {
+                'line-color': ['interpolate',['linear'],['get','intensidad'],
+                    0,'#1d4ed8', 0.3,'#3b82f6', 0.65,'#06b6d4', 1,'#22d3ee'],
+                'line-width': ['interpolate',['linear'],['get','intensidad'],
+                    0,0.3, 0.25,0.8, 0.6,1.8, 1,3.2],
+                'line-opacity': ['interpolate',['linear'],['get','intensidad'],
+                    0,0.22, 0.4,0.55, 1,0.9],
+            }
+        }, 'clusters');
+    }
+
+    // ─── Volumen pasajeros ───
+    srcSet('pnr-vol', buildVolumenGJ(S.pnrAp, S.catalogo));
+
+    if (!map.getLayer('vol-glow')) {
+        // Halo de glow
+        map.addLayer({
+            id: 'vol-glow', type: 'circle', source: 'pnr-vol',
+            paint: {
+                'circle-radius': ['interpolate',['linear'],['get','pax_total'],
+                    10000,12, 500000,28, 2000000,44, 10000000,64],
+                'circle-color': '#f97316',
+                'circle-opacity': 0,
+                'circle-stroke-color': '#f97316',
+                'circle-stroke-width': ['interpolate',['linear'],['get','pax_total'],
+                    10000,5, 10000000,22],
+                'circle-stroke-opacity': ['interpolate',['linear'],['get','pax_total'],
+                    10000,0.07, 10000000,0.3],
+                'circle-blur': 1,
+            }
+        }, 'aeropuertos-individuales');
+
+        // Círculo principal — color según volumen
+        map.addLayer({
+            id: 'vol-circle', type: 'circle', source: 'pnr-vol',
+            paint: {
+                'circle-color': ['interpolate',['linear'],['get','pax_total'],
+                    10000,'#22c55e', 200000,'#eab308',
+                    1000000,'#f97316', 5000000,'#ef4444', 10000000,'#dc2626'],
+                'circle-radius': ['interpolate',['linear'],['zoom'],
+                    2, ['interpolate',['linear'],['get','pax_total'],
+                        10000,3, 500000,7, 2000000,12, 10000000,17],
+                    7, ['interpolate',['linear'],['get','pax_total'],
+                        10000,5, 500000,12, 2000000,21, 10000000,32]],
+                'circle-opacity': 0.78,
+                'circle-stroke-width': 1.5,
+                'circle-stroke-color': 'rgba(255,255,255,0.18)',
+            }
+        }, 'aeropuertos-individuales');
+    }
+
+    syncVisibilidad();
+}
+
+function syncVisibilidad() {
+    const mapa = {
+        rutas:    ['ruta-halo','ruta-line'],
+        volumen:  ['vol-glow','vol-circle'],
+        catalogo: ['clusters','cluster-count','aeropuertos-individuales'],
+    };
+    for (const [k, ids] of Object.entries(mapa)) {
+        const v = S.capas[k] ? 'visible' : 'none';
+        ids.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v); });
     }
 }
 
 // ================================================================
-// CUANDO EL MAPA TERMINA DE CARGAR
+// INTERACCIONES DEL MAPA
 // ================================================================
-map.on('load', () => {
-    // Agregar fuente de datos vacía primero
-    // Los datos llegarán después desde la API con setData()
-    map.addSource('aeropuertos', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }, // vacío al inicio
-        cluster: true,
-        clusterMaxZoom: 7,
-        clusterRadius: 50,
-    });
+let popupActivo = null;
+let tooltipRuta = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
 
-    // --- CAPA: GRUPOS (CLUSTERS) ---
-    map.addLayer({
-        id: 'clusters',
-        type: 'circle',
-        source: 'aeropuertos',
-        filter: ['has', 'point_count'],  // Solo aplica a puntos agrupados
-        paint: {
-            // El tamaño y color cambia según cuántos puntos agrupa
-            'circle-color': [
-                'step', ['get', 'point_count'],
-                '#1d4ed8',   // azul oscuro para grupos pequeños (< 10)
-                10, '#2563eb',   // azul medio (< 30)
-                30, '#3b82f6',   // azul claro (>= 30)
-            ],
-            'circle-radius': [
-                'step', ['get', 'point_count'],
-                18, 10, 24, 30, 30
-            ],
-            'circle-stroke-width': 2,
-            'circle-stroke-color': 'rgba(59, 130, 246, 0.4)',
-        }
-    });
+function onClickAeropuerto(e) {
+    const f    = e.features[0];
+    const p    = f.properties;
+    const iata = p.iata || p.codigo_iata;
+    const [lon, lat] = f.geometry.coordinates.slice();
 
-    // --- CAPA: NÚMERO DENTRO DEL GRUPO ---
-    map.addLayer({
-        id: 'cluster-count',
-        type: 'symbol',
-        source: 'aeropuertos',
-        filter: ['has', 'point_count'],
-        layout: {
-            'text-field': '{point_count_abbreviated}',
-            'text-font': ['Open Sans Bold'],
-            'text-size': 13,
-        },
-        paint: { 'text-color': '#ffffff' }
-    });
+    S.iataActivo = iata;
+    marcarActivo(iata);
 
-    // --- CAPA: AEROPUERTOS INDIVIDUALES ---
-    map.addLayer({
-        id: 'aeropuertos-individuales',
-        type: 'circle',
-        source: 'aeropuertos',
-        filter: ['!', ['has', 'point_count']],  // Solo puntos NO agrupados
-        paint: {
-            'circle-color': '#38bdf8',
-            'circle-radius': [
-                'interpolate', ['linear'], ['zoom'],
-                4, 4,    // zoom 4 → radio 4px
-                10, 8,   // zoom 10 → radio 8px
-                14, 12   // zoom 14 → radio 12px
-            ],
-            'circle-stroke-width': 1.5,
-            'circle-stroke-color': 'rgba(56, 189, 248, 0.5)',
-            // Efecto de brillo/glow con sombra
-            'circle-opacity': 0.9,
-        }
-    });
+    if (popupActivo) popupActivo.remove();
+    popupActivo = new maplibregl.Popup({ offset: 14 })
+        .setLngLat([lon, lat])
+        .setHTML(htmlPopup(p, lon, lat))
+        .addTo(map);
 
-    // ----------------------------------------------------------------
-    // INTERACCIONES DEL MAPA
-    // ----------------------------------------------------------------
+    abrirDetalle(iata);
+}
 
-    // Al hacer clic en un grupo → hacer zoom para desagrupar
-    map.on('click', 'clusters', (e) => {
-        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-        const clusterId = features[0].properties.cluster_id;
-        map.getSource('aeropuertos').getClusterExpansionZoom(clusterId, (err, zoom) => {
-            if (err) return;
-            map.easeTo({ center: features[0].geometry.coordinates, zoom });
-        });
-    });
-
-    // Al hacer clic en un aeropuerto individual → mostrar popup
-    map.on('click', 'aeropuertos-individuales', (e) => {
-        const props = e.features[0].properties;
-        const coords = e.features[0].geometry.coordinates.slice();
-
-        document.getElementById('selected-iata').textContent = props.codigo_iata;
-        highlightListItem(props.codigo_iata);
-
-        new maplibregl.Popup({ offset: 12, closeButton: true })
-            .setLngLat(coords)
-            .setHTML(`
-                <div class="popup-iata">${props.codigo_iata}</div>
-                <div class="popup-name">${props.nombre}</div>
-                <div class="popup-detail">🏙️ <span>${props.ciudad}</span></div>
-                <div class="popup-detail">🌍 <span>${props.pais}</span></div>
-                ${props.codigo_icao ? `<div class="popup-detail">📡 ICAO: <span>${props.codigo_icao}</span></div>` : ''}
-                <div class="popup-detail">📍 <span>${coords[1].toFixed(4)}°, ${coords[0].toFixed(4)}°</span></div>
-            `)
-            .addTo(map);
-    });
-
-    // Cambiar cursor al pasar sobre puntos interactivos
-    map.on('mouseenter', 'aeropuertos-individuales', () => {
-        map.getCanvas().style.cursor = 'pointer';
-    });
-    map.on('mouseleave', 'aeropuertos-individuales', () => {
-        map.getCanvas().style.cursor = '';
-    });
-    map.on('mouseenter', 'clusters', () => {
-        map.getCanvas().style.cursor = 'pointer';
-    });
-    map.on('mouseleave', 'clusters', () => {
-        map.getCanvas().style.cursor = '';
-    });
-
-    // Poblar la lista lateral
-    poblarLista(todosLosAeropuertos);
-
-    // Cargar datos desde la API
-    cargarAeropuertos();
-});
+function htmlPopup(p, lon, lat) {
+    const iata  = p.iata || p.codigo_iata || '—';
+    const nombre = p.nombre || '—';
+    const ciudad = p.ciudad || '';
+    const vuelos = p.vuelos_total != null ? fmt(p.vuelos_total) : null;
+    const pax    = p.pax_total    != null ? fmtM(p.pax_total)   : null;
+    return `
+        <div class="pop-iata">${iata}</div>
+        <div class="pop-name">${nombre}${ciudad ? ` · ${ciudad}` : ''}</div>
+        ${vuelos ? `<div class="pop-row">Vuelos <b>${vuelos}</b></div>` : ''}
+        ${pax    ? `<div class="pop-row">Pasajeros <b>${pax}</b></div>` : ''}
+        <div class="pop-row">Coord. <b>${lat.toFixed(3)}°, ${lon.toFixed(3)}°</b></div>
+        <button class="pop-btn" onclick="abrirDetalle('${iata}')">Ver análisis completo →</button>`;
+}
 
 // ================================================================
-// LISTA LATERAL DE AEROPUERTOS
+// PANEL DE DETALLE
 // ================================================================
-function poblarLista(features) {
-    const lista = document.getElementById('airport-list');
-    lista.innerHTML = '';
+const MESES_C = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-    // Ordenar por código IATA
-    const ordenados = [...features].sort((a, b) =>
-        a.properties.codigo_iata.localeCompare(b.properties.codigo_iata)
-    );
+async function abrirDetalle(iata) {
+    document.getElementById('detail-panel').classList.add('open');
+    document.getElementById('dp-iata').textContent   = iata;
+    document.getElementById('dp-nombre').textContent = '…';
+    document.getElementById('dp-body').innerHTML = `
+        <div class="dp-loading">
+            <div class="spinner" style="width:20px;height:20px;border-width:2px"></div>
+            Cargando análisis…
+        </div>`;
 
-    ordenados.forEach(f => {
-        const p = f.properties;
-        const item = document.createElement('div');
-        item.className = 'airport-item';
-        item.setAttribute('role', 'listitem');
-        item.setAttribute('data-iata', p.codigo_iata);
-        item.innerHTML = `
-            <span class="airport-iata">${p.codigo_iata}</span>
-            <div class="airport-info">
-                <div class="airport-name">${p.ciudad}</div>
-                <div class="airport-location">${p.pais}</div>
+    S.iataActivo = iata;
+    marcarActivo(iata);
+
+    const data = await api.detalle(iata);
+    if (!data) {
+        document.getElementById('dp-body').innerHTML =
+            `<div class="dp-loading" style="color:var(--danger)">Sin datos para ${iata}</div>`;
+        return;
+    }
+
+    const cat    = S.catalogo[iata] || {};
+    const nombre = cat.nombre || iata;
+    const lugar  = cat.ciudad ? `${cat.ciudad} · ${cat.pais}` : '';
+    document.getElementById('dp-nombre').textContent = lugar || nombre;
+
+    renderDetalle(data);
+}
+
+function renderDetalle(data) {
+    const sal = data.salidas;
+    const lle = data.llegadas;
+    const mxM = Math.max(...(data.por_mes || []).map(m => m.pasajeros), 1);
+
+    function topBars(items, lKey, vKey) {
+        const mx = Math.max(...items.map(i => i[vKey] || 0), 1);
+        return items.slice(0,8).map(i => `
+            <div class="mini-bar-row">
+                <span class="mini-lbl" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i[lKey]}</span>
+                <div class="mini-track"><div class="mini-fill" style="width:${((i[vKey]||0)/mx*100).toFixed(1)}%"></div></div>
+                <span class="mini-val">${fmtM(i[vKey]||0)}</span>
+            </div>`).join('');
+    }
+
+    // Distribución horaria
+    const horas = Array.from({length:24}, (_,h) => {
+        const d = (data.por_hora||[]).find(x => Math.round(x.hora) === h);
+        return d ? d.vuelos : 0;
+    });
+    const mxH = Math.max(...horas, 1);
+
+    document.getElementById('dp-body').innerHTML = `
+        <!-- Salidas y llegadas -->
+        <div>
+            <div class="dp-sec">↑ Salidas &nbsp;↓ Llegadas</div>
+            <div class="dp-stats-grid">
+                <div class="dp-stat"><div class="dp-val">${fmtM(sal.vuelos)}</div><div class="dp-lbl">Vuelos salida</div></div>
+                <div class="dp-stat"><div class="dp-val" style="color:var(--green)">${fmtM(sal.pasajeros)}</div><div class="dp-lbl">Pax salida</div></div>
+                <div class="dp-stat"><div class="dp-val" style="color:var(--cyan)">${fmtM(lle.vuelos)}</div><div class="dp-lbl">Vuelos llegada</div></div>
+                <div class="dp-stat"><div class="dp-val" style="color:var(--amber)">${fmtM(lle.pasajeros)}</div><div class="dp-lbl">Pax llegada</div></div>
             </div>
-        `;
-        item.addEventListener('click', () => {
-            const [lon, lat] = f.geometry.coordinates;
-            map.flyTo({ center: [lon, lat], zoom: 10, duration: 1200 });
-            document.getElementById('selected-iata').textContent = p.codigo_iata;
-            highlightListItem(p.codigo_iata);
+            <div style="font-size:0.72rem;color:var(--text-muted);text-align:right;margin-top:6px">
+                Promedio/vuelo: <b style="color:var(--text)">${fmt(sal.pax_promedio)} pax</b>
+            </div>
+        </div>
 
-            setTimeout(() => {
-                new maplibregl.Popup({ offset: 12 })
-                    .setLngLat([lon, lat])
-                    .setHTML(`
-                        <div class="popup-iata">${p.codigo_iata}</div>
-                        <div class="popup-name">${p.nombre}</div>
-                        <div class="popup-detail">🏙️ <span>${p.ciudad}</span></div>
-                        <div class="popup-detail">🌍 <span>${p.pais}</span></div>
-                    `)
-                    .addTo(map);
-            }, 1200);
+        <!-- Gráfica mensual -->
+        <div>
+            <div class="dp-sec">📅 Pasajeros por mes</div>
+            <div class="month-chart">
+                ${(data.por_mes||[]).map(m => `
+                    <div class="month-col" title="${MESES_C[m.mes]}: ${fmt(m.pasajeros)} pax">
+                        <div class="month-fill-wrap">
+                            <div class="month-fill" style="height:${(m.pasajeros/mxM*100).toFixed(1)}%"></div>
+                        </div>
+                        <div class="month-lbl">${MESES_C[m.mes]}</div>
+                    </div>`).join('')}
+            </div>
+        </div>
+
+        <!-- Top aerolíneas -->
+        <div>
+            <div class="dp-sec">✈ Top aerolíneas (salidas)</div>
+            <div class="mini-bars">${topBars(data.top_aerolineas||[], 'codigo_aerolinea', 'vuelos')}</div>
+        </div>
+
+        <!-- Top destinos -->
+        <div>
+            <div class="dp-sec">🛫 Top destinos desde ${data.iata}</div>
+            <div class="mini-bars">${topBars(data.top_destinos||[], 'aeropuerto_llegada', 'pasajeros')}</div>
+        </div>
+
+        <!-- Top orígenes -->
+        <div>
+            <div class="dp-sec">🛬 Top orígenes hacia ${data.iata}</div>
+            <div class="mini-bars">${topBars(data.top_origenes||[], 'aeropuerto_salida', 'pasajeros')}</div>
+        </div>
+
+        <!-- Distribución horaria -->
+        ${mxH > 0 ? `
+        <div>
+            <div class="dp-sec">🕐 Distribución horaria (salidas)</div>
+            <div class="hour-chart">
+                ${horas.map((v,h) => `
+                    <div class="hour-bar"
+                         style="height:${(v/mxH*100).toFixed(0)}%;opacity:${v>0?0.85:0.1}"
+                         title="${h}:00 — ${fmt(v)} vuelos"></div>`).join('')}
+            </div>
+            <div class="hour-labels">
+                <span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>23h</span>
+            </div>
+        </div>` : ''}
+    `;
+}
+
+// ================================================================
+// ACTUALIZAR UI
+// ================================================================
+
+function actualizarHeader(r) {
+    if (!r) return;
+    document.getElementById('h-vuelos').textContent    = fmt(r.total_vuelos);
+    document.getElementById('h-pax').textContent       = fmtM(r.total_pasajeros);
+    document.getElementById('h-aerolineas').textContent = r.total_aerolineas;
+    document.getElementById('h-rutas').textContent     = fmt(r.total_pares_od);
+}
+
+function actualizarSidebar(r) {
+    if (!r) return;
+    document.getElementById('s-vuelos').textContent     = fmt(r.total_vuelos);
+    document.getElementById('s-pax').textContent        = fmtM(r.total_pasajeros);
+    document.getElementById('s-aerolineas').textContent = r.total_aerolineas;
+    document.getElementById('s-aeropuertos').textContent = r.total_aeropuertos;
+}
+
+function poblarLista(datos, query = '') {
+    const lista = document.getElementById('ap-list');
+    const q = query.toLowerCase().trim();
+    let fil = datos;
+    if (q) {
+        fil = datos.filter(d => {
+            const a = S.catalogo[d.iata] || {};
+            return d.iata.toLowerCase().includes(q)
+                || (a.ciudad||'').toLowerCase().includes(q)
+                || (a.pais||'').toLowerCase().includes(q)
+                || (a.nombre||'').toLowerCase().includes(q);
         });
-
-        lista.appendChild(item);
+    }
+    lista.innerHTML = '';
+    fil.slice(0, 250).forEach(d => {
+        const a = S.catalogo[d.iata] || {};
+        const el = document.createElement('div');
+        el.className = 'ap-item';
+        el.setAttribute('role', 'listitem');
+        el.setAttribute('data-iata', d.iata);
+        if (d.iata === S.iataActivo) el.classList.add('active');
+        el.innerHTML = `
+            <span class="ap-iata">${d.iata}</span>
+            <div class="ap-info">
+                <div class="ap-name">${a.ciudad || d.iata}</div>
+                <div class="ap-sub">${a.pais || ''}</div>
+            </div>
+            <div class="ap-badge"><span>${fmtM(d.pax_total||0)}</span>pax</div>`;
+        el.addEventListener('click', () => {
+            S.iataActivo = d.iata;
+            const ap = S.catalogo[d.iata];
+            if (ap) map.flyTo({ center: [ap.lon, ap.lat], zoom: 7, duration: 1100, essential: true });
+            marcarActivo(d.iata);
+            abrirDetalle(d.iata);
+        });
+        lista.appendChild(el);
     });
 }
 
-// Resaltar el elemento activo en la lista
-function highlightListItem(iata) {
-    document.querySelectorAll('.airport-item').forEach(el => {
+function marcarActivo(iata) {
+    document.querySelectorAll('.ap-item').forEach(el => {
         el.classList.toggle('active', el.dataset.iata === iata);
     });
 }
 
 // ================================================================
-// BUSCADOR EN TIEMPO REAL (ahora con filtro a la API)
+// RECARGAR CON FILTROS
 // ================================================================
-let searchTimeout = null;
 
+async function recargar() {
+    setBtnsDisabled(true);
+    try {
+        const [res, rutas, ap] = await Promise.all([api.resumen(), api.rutas(), api.porAp()]);
+        S.resumen   = res;
+        S.pnrRutas  = rutas;
+        S.pnrAp     = ap;
+        actualizarHeader(res);
+        actualizarSidebar(res);
+        poblarLista(ap, document.getElementById('search-input').value);
+        renderCapas();
+        // Si hay un detalle abierto, refrescarlo
+        if (S.iataActivo && document.getElementById('detail-panel').classList.contains('open')) {
+            abrirDetalle(S.iataActivo);
+        }
+    } finally {
+        setBtnsDisabled(false);
+    }
+}
+
+function setBtnsDisabled(v) {
+    document.querySelectorAll('.mes-btn').forEach(b => {
+        b.disabled = v;
+        b.style.opacity = v ? '0.55' : '1';
+    });
+}
+
+// ================================================================
+// EVENTOS
+// ================================================================
+
+// Filtros de mes
+document.querySelectorAll('.mes-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.mes-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        S.mes = btn.dataset.mes || null;
+        recargar();
+    });
+});
+
+// Toggles de capas
+document.getElementById('t-rutas').addEventListener('change', e => {
+    S.capas.rutas = e.target.checked; syncVisibilidad();
+});
+document.getElementById('t-volumen').addEventListener('change', e => {
+    S.capas.volumen = e.target.checked; syncVisibilidad();
+});
+document.getElementById('t-catalogo').addEventListener('change', e => {
+    S.capas.catalogo = e.target.checked; syncVisibilidad();
+});
+
+// Controles de rutas
+document.getElementById('sel-max-rutas').addEventListener('change', e => {
+    S.maxRutas = parseInt(e.target.value, 10);
+    recargar();
+});
+document.getElementById('sel-min-vuelos').addEventListener('change', e => {
+    S.minVuelos = parseInt(e.target.value, 10);
+    recargar();
+});
+
+// Buscador
+let st = null;
 document.getElementById('search-input').addEventListener('input', function() {
-    const query = this.value.toLowerCase().trim();
+    clearTimeout(st);
+    st = setTimeout(() => poblarLista(S.pnrAp, this.value), 220);
+});
 
-    // Filtrar localmente sobre los datos ya cargados (rápido, sin nueva petición)
-    const filtrados = query === ''
-        ? todosLosAeropuertos
-        : todosLosAeropuertos.filter(f => {
-            const p = f.properties;
-            return p.codigo_iata.toLowerCase().includes(query)
-                || p.ciudad.toLowerCase().includes(query)
-                || p.pais.toLowerCase().includes(query)
-                || p.nombre.toLowerCase().includes(query);
-        });
+// Cerrar panel detalle
+document.getElementById('btn-close').addEventListener('click', () => {
+    document.getElementById('detail-panel').classList.remove('open');
+    S.iataActivo = null;
+    document.querySelectorAll('.ap-item').forEach(el => el.classList.remove('active'));
+    if (popupActivo) { popupActivo.remove(); popupActivo = null; }
+});
 
-    poblarLista(filtrados);
+// ================================================================
+// INICIALIZACIÓN
+// ================================================================
+map.on('load', async () => {
 
-    // Actualizar el mapa con los resultados filtrados
-    map.getSource('aeropuertos').setData({
-        type: 'FeatureCollection',
-        features: filtrados
+    // ─── Fuente catálogo (clusters) ───
+    map.addSource('aeropuertos', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+        cluster: true, clusterMaxZoom: 6, clusterRadius: 45,
     });
 
-    // Si hay exactamente un resultado, volar a él
-    if (filtrados.length === 1) {
-        const [lon, lat] = filtrados[0].geometry.coordinates;
-        map.flyTo({ center: [lon, lat], zoom: 9, duration: 1000 });
+    map.addLayer({
+        id: 'clusters', type: 'circle', source: 'aeropuertos',
+        filter: ['has', 'point_count'],
+        paint: {
+            'circle-color': ['step',['get','point_count'],'#1e3a8a',10,'#1d4ed8',30,'#3b82f6'],
+            'circle-radius': ['step',['get','point_count'],16,10,22,30,28],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': 'rgba(59,130,246,0.3)',
+        }
+    });
+
+    map.addLayer({
+        id: 'cluster-count', type: 'symbol', source: 'aeropuertos',
+        filter: ['has', 'point_count'],
+        layout: { 'text-field': '{point_count_abbreviated}', 'text-font': ['Open Sans Bold'], 'text-size': 11 },
+        paint: { 'text-color': '#fff' }
+    });
+
+    map.addLayer({
+        id: 'aeropuertos-individuales', type: 'circle', source: 'aeropuertos',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+            'circle-color': '#38bdf8',
+            'circle-radius': ['interpolate',['linear'],['zoom'], 3,2.5, 10,5, 14,9],
+            'circle-stroke-width': 1.5,
+            'circle-stroke-color': 'rgba(56,189,248,0.38)',
+            'circle-opacity': 0.75,
+        }
+    });
+
+    // ─── Click handlers ───
+    map.on('click', 'vol-circle', onClickAeropuerto);
+    map.on('click', 'aeropuertos-individuales', onClickAeropuerto);
+    map.on('click', 'clusters', e => {
+        const f = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })[0];
+        map.getSource('aeropuertos').getClusterExpansionZoom(f.properties.cluster_id, (err, z) => {
+            if (!err) map.easeTo({ center: f.geometry.coordinates, zoom: z });
+        });
+    });
+
+    // ─── Cursores ───
+    ['vol-circle','aeropuertos-individuales','clusters'].forEach(l => {
+        map.on('mouseenter', l, () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', l, () => { map.getCanvas().style.cursor = ''; });
+    });
+
+    // ─── Tooltip en rutas ───
+    map.on('mouseenter', 'ruta-line', e => {
+        map.getCanvas().style.cursor = 'crosshair';
+        const p = e.features[0].properties;
+        tooltipRuta.setLngLat(e.lngLat).setHTML(`
+            <div style="font-size:0.75rem;padding:2px">
+                <b style="color:var(--cyan)">${p.origen} → ${p.destino}</b><br>
+                <span style="color:var(--text-muted)">${fmt(p.vuelos)} vuelos · ${fmtM(p.pasajeros)} pax</span>
+            </div>`).addTo(map);
+    });
+    map.on('mouseleave', 'ruta-line', () => {
+        map.getCanvas().style.cursor = '';
+        tooltipRuta.remove();
+    });
+
+    // ─── CARGA INICIAL ───
+    const loading = document.getElementById('loading');
+    const loadTxt = document.getElementById('loading-txt');
+
+    try {
+        loadTxt.textContent = 'Cargando catálogo de aeropuertos…';
+        const catGJ  = await api.catalogo();
+
+        // Indexar catálogo por IATA
+        for (const f of (catGJ.features || [])) {
+            const [lon, lat] = f.geometry.coordinates;
+            S.catalogo[f.properties.codigo_iata] = {
+                lon, lat,
+                nombre: f.properties.nombre,
+                ciudad: f.properties.ciudad,
+                pais:   f.properties.pais,
+            };
+        }
+
+        // Alimentar capa del catálogo
+        map.getSource('aeropuertos').setData(catGJ);
+
+        loadTxt.textContent = 'Cargando datos PNR (223,248 registros)…';
+
+        const [res, rutas, porAp] = await Promise.all([
+            api.resumen(), api.rutas(), api.porAp()
+        ]);
+
+        S.resumen  = res;
+        S.pnrRutas = rutas;
+        S.pnrAp    = porAp;
+
+        actualizarHeader(res);
+        actualizarSidebar(res);
+        poblarLista(porAp);
+        renderCapas();
+
+    } catch(err) {
+        console.error('Error de carga:', err);
+        loadTxt.textContent = `⚠️ Error: ${err.message}`;
+        return;
     }
+
+    loading.classList.add('hidden');
 });
 </script>
-
 </body>
 </html>

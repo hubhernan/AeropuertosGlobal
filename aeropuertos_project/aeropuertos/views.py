@@ -66,3 +66,13 @@ def mapa_aeropuertos(request):
     }
 
     return render(request, "aeropuertos/mapa.html", context)
+
+def mapa_view(request):
+    """Renderiza el mapa principal con MapLibre GL JS."""
+    return render(request, 'aeropuertos/mapa.html', {
+        'maptiler_key': settings.MAPTILER_API_KEY
+    })
+
+def dashboard_view(request):
+    """Renderiza el dashboard alterno con Apache ECharts."""
+    return render(request, 'aeropuertos/dashboard.html', {})

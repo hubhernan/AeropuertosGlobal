@@ -10,7 +10,7 @@ gestionar los modelos registrados aquí. Con ModelAdmin puedes personalizar:
 """
 
 from django.contrib.gis import admin
-from .models import Aeropuerto
+from .models import Aeropuerto, VueloPNR
 
 
 @admin.register(Aeropuerto)
@@ -106,3 +106,104 @@ class AeropuertoAdmin(admin.GISModelAdmin):
     # Zoom inicial del mapa cuando creas un aeropuerto nuevo
     map_width = 700
     map_height = 400
+
+
+# ===========================================================================
+# ADMIN: VueloPNR
+# ===========================================================================
+
+@admin.register(VueloPNR)
+class VueloPNRAdmin(admin.ModelAdmin):
+    """
+    Admin para los registros de vuelos PNR3 Ene-Jun 2026.
+
+    La tabla tiene ~223k registros, por lo que se deshabilita
+    el conteo automático de filas para evitar queries lentas.
+    """
+
+    # Columnas visibles en la lista
+    list_display = (
+        'fecha_vuelo',
+        'codigo_aerolinea',
+        'nombre_corto_aerolinea',
+        'numero_vuelo',
+        'aeropuerto_salida',
+        'aeropuerto_llegada',
+        'ruta',
+        'pasajeros',
+        'apis',
+        'pnr',
+        'dcs',
+        'num_segmentos',
+    )
+
+    # Campos por los que se puede buscar
+    search_fields = (
+        'codigo_aerolinea',
+        'nombre_aerolinea',
+        'numero_vuelo',
+        'ruta',
+        'aeropuerto_salida',
+        'aeropuerto_llegada',
+    )
+
+    # Filtros en el panel lateral derecho
+    list_filter = (
+        'mes',
+        'dia_semana',
+        'codigo_aerolinea',
+        'num_segmentos',
+    )
+
+    # Ordenamiento por defecto
+    ordering = ('-fecha_vuelo',)
+
+    # Registros por página (tabla grande → paginación más pequeña)
+    list_per_page = 50
+
+    # Deshabilitar el conteo total para no hacer COUNT(*) en 223k filas
+    show_full_result_count = False
+
+    # Campos de solo lectura (los derivados se calculan al cargar)
+    readonly_fields = (
+        'fecha',
+        'hora_salida',
+        'mes',
+        'semana',
+        'dia_semana',
+        'codigo_aerolinea',
+        'nombre_corto_aerolinea',
+        'num_segmentos',
+        'pasajeros',
+        'cargado_en',
+    )
+
+    # Organización del formulario de detalle
+    fieldsets = (
+        ('Vuelo', {
+            'fields': (
+                ('fecha_vuelo', 'numero_vuelo'),
+                ('nombre_aerolinea', 'codigo_aerolinea', 'nombre_corto_aerolinea'),
+            )
+        }),
+        ('Ruta', {
+            'fields': (
+                'ruta',
+                ('aeropuerto_salida', 'aeropuerto_llegada'),
+                'num_segmentos',
+            )
+        }),
+        ('Pasajeros (por sistema)', {
+            'fields': (
+                ('apis', 'pnr', 'dcs', 'pasajeros'),
+            )
+        }),
+        ('Campos derivados (solo lectura)', {
+            'classes': ('collapse',),
+            'fields': (
+                ('fecha', 'hora_salida'),
+                ('mes', 'semana', 'dia_semana'),
+                'cargado_en',
+            )
+        }),
+    )
